@@ -99,6 +99,18 @@ main {
   gap: 0.75rem;
 }
 
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 label {
   font-size: 0.75rem;
   letter-spacing: 0.12em;
@@ -107,7 +119,7 @@ label {
   font-weight: 600;
 }
 
-.length-control {
+.number-control {
   display: flex;
   align-items: center;
   gap: 0;
@@ -118,7 +130,7 @@ label {
   background: var(--surface);
 }
 
-.length-control button {
+.number-control button {
   background: transparent;
   border: none;
   color: var(--text);
@@ -134,12 +146,17 @@ label {
   user-select: none;
 }
 
-.length-control button:hover { background: var(--border); }
-.length-control button:active { background: var(--muted); }
-.length-control button:disabled { opacity: 0.3; cursor: not-allowed; }
-.length-control button:disabled:hover { background: transparent; }
+.number-control button img {
+  width: 1.2rem;
+  height: 1.2rem;
+}
 
-#length-input {
+.number-control button:hover { background: var(--border); }
+.number-control button:active { background: var(--muted); }
+.number-control button:disabled { opacity: 0.3; cursor: not-allowed; }
+.number-control button:disabled:hover { background: transparent; }
+
+.number-control input {
   background: transparent;
   border: none;
   border-left: 1px solid var(--border);
@@ -154,8 +171,8 @@ label {
   -moz-appearance: textfield;
 }
 
-#length-input::-webkit-inner-spin-button,
-#length-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.number-control input::-webkit-inner-spin-button,
+.number-control input::-webkit-outer-spin-button { -webkit-appearance: none; }
 
 .pattern-preview {
   font-family: var(--font-mono);
@@ -206,8 +223,9 @@ label {
 }
 
 .btn-icon {
-  font-size: 1.1rem;
   display: inline-block;
+  width: 1.15rem;
+  height: 1.15rem;
   transition: transform 0.5s ease;
 }
 
@@ -252,18 +270,56 @@ label {
   color: var(--border);
 }
 
+.word-list {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.word-list.single {
+  display: flex;
+  justify-content: center;
+}
+
+.word-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  animation: wordIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: border-color var(--transition);
+}
+
+.word-card:hover,
+.word-card.pinned {
+  border-color: var(--accent-dim);
+}
+
 .word-result {
   font-family: var(--font-mono);
-  font-size: clamp(2rem, 8vw, 3.5rem);
+  font-size: clamp(1.35rem, 5vw, 2.2rem);
   letter-spacing: 0.08em;
   color: var(--text);
-  animation: wordIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.4rem 0.5rem;
   cursor: pointer;
   transition: color var(--transition);
   user-select: all;
+  overflow-wrap: anywhere;
 }
 
-.word-result:hover { color: var(--accent); }
+.word-list.single .word-result {
+  font-size: clamp(2rem, 8vw, 3.5rem);
+}
+
+.word-result:hover {
+  color: var(--accent);
+}
 
 .copy-hint {
   font-size: 0.7rem;
@@ -273,6 +329,7 @@ label {
   margin-top: 0.4rem;
   opacity: 0;
   transition: opacity var(--transition);
+  grid-column: 1 / -1;
 }
 
 .word-display:hover .copy-hint { opacity: 1; }
@@ -289,23 +346,76 @@ label {
   gap: 0.5rem;
 }
 
+.history-item {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+  animation: chipIn 0.25s ease;
+  transition: border-color var(--transition), color var(--transition);
+}
+
+.history-item:hover {
+  border-color: var(--accent-dim);
+}
+
+.history-item.pinned {
+  border-color: var(--accent-dim);
+}
+
+.history-chip,
+.pin-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
 .history-chip {
   font-family: var(--font-mono);
   font-size: 0.8rem;
   letter-spacing: 0.06em;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 99px;
   padding: 0.3rem 0.75rem;
-  color: var(--muted);
-  cursor: pointer;
-  transition: border-color var(--transition), color var(--transition);
-  animation: chipIn 0.25s ease;
 }
 
 .history-chip:hover {
-  border-color: var(--accent-dim);
   color: var(--text);
+}
+
+.pin-btn {
+  align-self: stretch;
+  border-left: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  padding: 0 0.55rem;
+}
+
+.generated-pin {
+  border-left-color: transparent;
+  padding: 0 0.65rem 0 0.35rem;
+}
+
+.pin-btn:hover,
+.history-item.pinned .pin-btn,
+.word-card.pinned .pin-btn {
+  color: var(--accent);
+}
+
+.pin-icon {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  opacity: 0.65;
+  transition: opacity var(--transition), transform var(--transition);
+}
+
+.pin-btn:hover .pin-icon,
+.history-item.pinned .pin-icon,
+.word-card.pinned .pin-icon {
+  opacity: 1;
 }
 
 @keyframes chipIn {

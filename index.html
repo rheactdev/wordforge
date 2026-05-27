@@ -19,25 +19,53 @@
 
       <main>
         <section class="controls">
-          <label for="length-input">Word Length</label>
-          <div class="length-control">
-            <button id="decrement" aria-label="Decrease length">−</button>
-            <input
-              id="length-input"
-              type="number"
-              min="2"
-              max="16"
-              value="6"
-              aria-label="Word length"
-            />
-            <button id="increment" aria-label="Increase length">+</button>
+          <div class="control-row">
+            <div class="control-group">
+              <label for="length-input">Word Length</label>
+              <div class="number-control">
+                <button id="decrement" aria-label="Decrease length">
+                  <img src="/src/icons/icons8-minus.svg" alt="" aria-hidden="true" />
+                </button>
+                <input
+                  id="length-input"
+                  type="number"
+                  min="2"
+                  max="16"
+                  value="6"
+                  aria-label="Word length"
+                />
+                <button id="increment" aria-label="Increase length">
+                  <img src="/src/icons/icons8-plus.svg" alt="" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label for="count-input">Words</label>
+              <div class="number-control">
+                <button id="count-decrement" aria-label="Decrease word count">
+                  <img src="/src/icons/icons8-minus.svg" alt="" aria-hidden="true" />
+                </button>
+                <input
+                  id="count-input"
+                  type="number"
+                  min="1"
+                  max="20"
+                  value="1"
+                  aria-label="Number of words"
+                />
+                <button id="count-increment" aria-label="Increase word count">
+                  <img src="/src/icons/icons8-plus.svg" alt="" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
           </div>
           <div class="pattern-preview" id="pattern-preview">C V C V C V</div>
         </section>
 
         <button id="generate-btn" class="generate-btn">
           <span class="btn-text">Generate</span>
-          <span class="btn-icon">⟳</span>
+          <img class="btn-icon" src="/src/icons/icons8-reload.svg" alt="" aria-hidden="true" />
         </button>
 
         <section class="output" id="output" aria-live="polite">
@@ -48,7 +76,7 @@
         </section>
 
         <div class="api-note">
-          One API call per word · <span id="calls-made">0</span> calls this session
+          One API call per batch · <span id="calls-made">0</span> calls this session
         </div>
       </main>
 

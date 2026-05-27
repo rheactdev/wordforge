@@ -7,20 +7,25 @@
  * Vowels:      5 letters  (a e i o u)
  * 21 × 5 = 105  ← magic number
  *
- * We request exactly `wordLength` integers from 0–104 in ONE API call.
+ * We request exactly `wordLength * wordCount` integers from 0–104 in ONE API call.
  * For each position:
  *   C position → consonants[value % 21]   (21 divides 105 → no modulo bias)
  *   V position → vowels[value % 5]        ( 5 divides 105 → no modulo bias)
  *
- * Result: perfectly uniform distribution, minimum API token usage.
+ * Result: perfectly uniform distribution with one random.org request per batch.
  */
+
+import PIN_ICON from './icons/icons8-pin.svg'
 
 const CONSONANTS = ['b','c','d','f','g','h','j','k','l','m','n','p','q','r','s','t','v','w','x','y','z']
 const VOWELS     = ['a','e','i','o','u']
 const MAGIC_MAX  = CONSONANTS.length * VOWELS.length - 1  // 104
 const MIN_LEN    = 2
 const MAX_LEN    = 16
+const MIN_WORDS  = 1
+const MAX_WORDS  = 20
 const MAX_HISTORY = 10
+const PINNED_WORDS_KEY = 'wordforge:pinned-words'
 
 const API_KEY = import.meta.env.VITE_RANDOM_ORG_API_KEY
 
@@ -28,6 +33,9 @@ const API_KEY = import.meta.env.VITE_RANDOM_ORG_API_KEY
 const lengthInput    = document.getElementById('length-input')
 const decrementBtn   = document.getElementById('decrement')
 const incrementBtn   = document.getElementById('increment')
+const countInput     = document.getElementById('count-input')
+const countDecrementBtn = document.getElementById('count-decrement')
+const countIncrementBtn = document.getElementById('count-increment')
 const patternPreview = document.getElementById('pattern-preview')
 const generateBtn    = document.getElementById('generate-btn')
 const wordDisplay    = document.getElementById('word-display')
@@ -37,8 +45,10 @@ const toast          = document.getElementById('toast')
 
 // ── State ────────────────────────────────────────────────────────
 let wordLength   = 6
+let wordCount    = 1
 let sessionCalls = 0
 let history      = []
+let pinnedWords  = loadPinnedWords()
 let toastTimer   = null
 
 // ── Helpers ──────────────────────────────────────────────────────
@@ -59,6 +69,8 @@ function toLetter(value, positionIndex) {
 function updateSteppers() {
   decrementBtn.disabled = wordLength <= MIN_LEN
   incrementBtn.disabled = wordLength >= MAX_LEN
+  countDecrementBtn.disabled = wordCount <= MIN_WORDS
+  countIncrementBtn.disabled = wordCount >= MAX_WORDS
 }
 
 /** Render the current pattern preview */
@@ -76,6 +88,12 @@ function showToast(msg, isError = false) {
 
 /** Add word to history chips */
 function pushHistory(word) {
+  if (pinnedWords.includes(word)) {
+    renderHistory()
+    return
+  }
+
+  history = history.filter(w => w !== word)
   history.unshift(word)
   if (history.length > MAX_HISTORY) history.pop()
   renderHistory()
@@ -83,14 +101,69 @@ function pushHistory(word) {
 
 function renderHistory() {
   wordHistory.innerHTML = ''
-  history.forEach(w => {
-    const chip = document.createElement('button')
-    chip.className = 'history-chip'
-    chip.textContent = w
-    chip.title = `Copy "${w}"`
-    chip.addEventListener('click', () => copyToClipboard(w))
-    wordHistory.appendChild(chip)
+
+  const pinnedSet = new Set(pinnedWords)
+  const words = [
+    ...pinnedWords.map(word => ({ word, pinned: true })),
+    ...history
+      .filter(word => !pinnedSet.has(word))
+      .map(word => ({ word, pinned: false })),
+  ]
+
+  words.forEach(({ word, pinned }) => {
+    const item = document.createElement('div')
+    item.className = `history-item${pinned ? ' pinned' : ''}`
+
+    const copyBtn = document.createElement('button')
+    copyBtn.className = 'history-chip'
+    copyBtn.textContent = word
+    copyBtn.title = `Copy "${word}"`
+    copyBtn.addEventListener('click', () => copyToClipboard(word))
+
+    const pinBtn = document.createElement('button')
+    pinBtn.className = 'pin-btn'
+    pinBtn.type = 'button'
+    pinBtn.setAttribute('aria-label', `${pinned ? 'Unpin' : 'Pin'} ${word}`)
+    pinBtn.title = pinned ? 'Unpin word' : 'Pin word'
+    pinBtn.innerHTML = `<img class="pin-icon" src="${PIN_ICON}" alt="" aria-hidden="true" />`
+    pinBtn.addEventListener('click', () => togglePinnedWord(word))
+
+    item.append(copyBtn, pinBtn)
+    wordHistory.appendChild(item)
   })
+}
+
+function loadPinnedWords() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PINNED_WORDS_KEY) || '[]')
+    return Array.isArray(parsed)
+      ? parsed.filter(word => typeof word === 'string' && word.length > 0)
+      : []
+  } catch {
+    return []
+  }
+}
+
+function savePinnedWords() {
+  try {
+    localStorage.setItem(PINNED_WORDS_KEY, JSON.stringify(pinnedWords))
+  } catch {
+    showToast('Pin save failed', true)
+  }
+}
+
+function togglePinnedWord(word) {
+  if (pinnedWords.includes(word)) {
+    pinnedWords = pinnedWords.filter(w => w !== word)
+    showToast(`"${word}" unpinned`)
+  } else {
+    pinnedWords = [word, ...pinnedWords.filter(w => w !== word)]
+    showToast(`"${word}" pinned`)
+  }
+
+  savePinnedWords()
+  renderHistory()
+  refreshGeneratedWordPins()
 }
 
 /** Copy text and show toast */
@@ -103,11 +176,19 @@ async function copyToClipboard(text) {
   }
 }
 
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function capitalize(word) {
+  return word.charAt(0).toUpperCase() + word.slice(1)
+}
+
 // ── random.org API ────────────────────────────────────────────────
 
 /**
  * Fetch `count` truly-random integers from random.org (0–MAGIC_MAX inclusive).
- * One API call regardless of word length.
+ * One API call regardless of generated word count.
  */
 async function fetchRandomIntegers(count) {
   if (!API_KEY || API_KEY === 'your-api-key-here') {
@@ -147,30 +228,72 @@ async function fetchRandomIntegers(count) {
 
 // ── Word Generation ───────────────────────────────────────────────
 
-async function generateWord() {
+function buildWord(integers) {
+  return capitalize(integers.map((v, i) => toLetter(v, i)).join(''))
+}
+
+function renderWords(words) {
+  const listClass = words.length === 1 ? 'word-list single' : 'word-list'
+
+  wordDisplay.innerHTML = `
+    <div class="${listClass}">
+      ${words.map(word => {
+        const pinned = pinnedWords.includes(word)
+
+        return `
+        <div class="word-card${pinned ? ' pinned' : ''}" data-word="${word}">
+          <button class="word-result" type="button" title="Click to copy">${word}</button>
+          <button class="pin-btn generated-pin" type="button" aria-label="${pinned ? 'Unpin' : 'Pin'} ${word}" title="${pinned ? 'Unpin word' : 'Pin word'}">
+            <img class="pin-icon" src="${PIN_ICON}" alt="" aria-hidden="true" />
+          </button>
+        </div>
+        `
+      }).join('')}
+      <div class="copy-hint">click a word to copy</div>
+    </div>
+  `
+
+  wordDisplay.querySelectorAll('.word-result').forEach(button => {
+    button.addEventListener('click', () => copyToClipboard(button.textContent))
+  })
+
+  wordDisplay.querySelectorAll('.generated-pin').forEach(button => {
+    button.addEventListener('click', () => {
+      const word = button.closest('.word-card').dataset.word
+      togglePinnedWord(word)
+    })
+  })
+}
+
+function refreshGeneratedWordPins() {
+  wordDisplay.querySelectorAll('.word-card').forEach(card => {
+    const word = card.dataset.word
+    const pinned = pinnedWords.includes(word)
+    const pinBtn = card.querySelector('.generated-pin')
+
+    card.classList.toggle('pinned', pinned)
+    pinBtn.setAttribute('aria-label', `${pinned ? 'Unpin' : 'Pin'} ${word}`)
+    pinBtn.title = pinned ? 'Unpin word' : 'Pin word'
+  })
+}
+
+async function generateWords() {
   generateBtn.disabled = true
   generateBtn.classList.add('loading')
   wordDisplay.innerHTML = '<span class="placeholder">…</span>'
 
   try {
-    const integers = await fetchRandomIntegers(wordLength)  // ONE API call
+    const integers = await fetchRandomIntegers(wordLength * wordCount)  // ONE API call
     sessionCalls++
     callsMade.textContent = sessionCalls
 
-    const word = integers.map((v, i) => toLetter(v, i)).join('')
-    const capitalized = word.charAt(0).toUpperCase() + word.slice(1)
-
-    wordDisplay.innerHTML = `
-      <div>
-        <div class="word-result" title="Click to copy">${capitalized}</div>
-        <div class="copy-hint">click to copy</div>
-      </div>
-    `
-    wordDisplay.querySelector('.word-result').addEventListener('click', () => {
-      copyToClipboard(capitalized)
+    const words = Array.from({ length: wordCount }, (_, i) => {
+      const start = i * wordLength
+      return buildWord(integers.slice(start, start + wordLength))
     })
 
-    pushHistory(capitalized)
+    renderWords(words)
+    words.slice().reverse().forEach(pushHistory)
   } catch (err) {
     wordDisplay.innerHTML = '<span class="placeholder">—</span>'
     showToast(err.message, true)
@@ -204,28 +327,58 @@ incrementBtn.addEventListener('click', () => {
 lengthInput.addEventListener('change', () => {
   let v = parseInt(lengthInput.value, 10)
   if (isNaN(v)) v = MIN_LEN
-  wordLength = Math.min(MAX_LEN, Math.max(MIN_LEN, v))
+  wordLength = clampNumber(v, MIN_LEN, MAX_LEN)
   lengthInput.value = wordLength
   updateSteppers()
   renderPattern()
 })
 
-// Allow Enter key to generate
-lengthInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') generateWord()
+countDecrementBtn.addEventListener('click', () => {
+  if (wordCount > MIN_WORDS) {
+    wordCount--
+    countInput.value = wordCount
+    updateSteppers()
+  }
 })
 
-generateBtn.addEventListener('click', generateWord)
+countIncrementBtn.addEventListener('click', () => {
+  if (wordCount < MAX_WORDS) {
+    wordCount++
+    countInput.value = wordCount
+    updateSteppers()
+  }
+})
+
+countInput.addEventListener('change', () => {
+  let v = parseInt(countInput.value, 10)
+  if (isNaN(v)) v = MIN_WORDS
+  wordCount = clampNumber(v, MIN_WORDS, MAX_WORDS)
+  countInput.value = wordCount
+  updateSteppers()
+})
+
+// Allow Enter key to generate
+lengthInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') generateWords()
+})
+
+countInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') generateWords()
+})
+
+generateBtn.addEventListener('click', generateWords)
 
 // Keyboard shortcut: Space / Enter on body
 document.addEventListener('keydown', e => {
   if (e.target === document.body && (e.key === ' ' || e.key === 'Enter')) {
     e.preventDefault()
-    generateWord()
+    generateWords()
   }
 })
 
 // ── Init ──────────────────────────────────────────────────────────
 lengthInput.value = wordLength
+countInput.value = wordCount
 updateSteppers()
 renderPattern()
+renderHistory()
