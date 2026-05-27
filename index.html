@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WordForge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Syne+Mono&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <div class="logo">W<span class="accent">F</span></div>
+        <h1>WordForge</h1>
+        <p class="tagline">Conjure words from the void</p>
+      </header>
+
+      <main>
+        <section class="controls">
+          <label for="length-input">Word Length</label>
+          <div class="length-control">
+            <button id="decrement" aria-label="Decrease length">−</button>
+            <input
+              id="length-input"
+              type="number"
+              min="2"
+              max="16"
+              value="6"
+              aria-label="Word length"
+            />
+            <button id="increment" aria-label="Increase length">+</button>
+          </div>
+          <div class="pattern-preview" id="pattern-preview">C V C V C V</div>
+        </section>
+
+        <button id="generate-btn" class="generate-btn">
+          <span class="btn-text">Generate</span>
+          <span class="btn-icon">⟳</span>
+        </button>
+
+        <section class="output" id="output" aria-live="polite">
+          <div class="word-display" id="word-display">
+            <span class="placeholder">—</span>
+          </div>
+          <div class="word-history" id="word-history"></div>
+        </section>
+
+        <div class="api-note">
+          One API call per word · <span id="calls-made">0</span> calls this session
+        </div>
+      </main>
+
+      <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
